@@ -1,8 +1,7 @@
+#define MAIN
 
 // Required Libraries
 #include "NHD-160128WG.h"
-
-uint8_t flip[] = {0b0000, 0b1000, 0b0100, 0b1100, 0b0010, 0b1010, 0b0110, 0b1110, 0b0001, 0b1001, 0b0101, 0b1101, 0b0011, 0b1011, 0b0111, 0b1111};
 
 void initialize() {
 	DDRD = 0xFF;		// Initialize data direction of port D
@@ -13,7 +12,7 @@ void initialize() {
 	ADCSRA = (1<<ADEN) | (0<<ADPS2)| (1<<ADPS1)| (1<<ADPS0);	//enable ADC
 }
 
-uint16_t getADC(char chan) {		// Equation for current: (I * 8.25) - 100 = (ADC)
+uint16_t getADC(char chan) {		// Equation for current: (I * 8.25) + 100 = (ADC)
 	ADMUX = chan;		// Select which ADC MUX channel to read
 	_delay_us(100);		// Stabalize ADC MUX output before retrieving value
 	uint16_t j = 0;
@@ -24,66 +23,78 @@ uint16_t getADC(char chan) {		// Equation for current: (I * 8.25) - 100 = (ADC)
 	return j;		// Return ADC value
 }
 
-uint8_t flipByte(uint8_t in) {
-	return(flip[in&0x0F]<<4 | flip[in>>4]);
+void getTemp(uint8_t temp, uint8_t x, uint8_t y, uint8_t tempWidth, uint8_t tempHeight) {
+	uint8_t tempThick = 3;											// Chosen line thickness of individual digits
+	uint8_t digitWidth = ((tempWidth - 1)/3) - tempThick - 1;		// Calculate width of individual digits
+	uint8_t digitHeight = ((tempHeight - tempThick)*2)/3;			// Calculate height of individual digits
+	if(temp/100)
+		numGFX(temp/100, tempThick, x, y + (tempHeight/3), digitWidth, digitHeight);	// Display hundreds digit
+	else
+		deleteBlock(x, y + (tempHeight/3), tempThick + digitWidth, tempThick + digitHeight);		// Do not display zero
+	numGFX((temp%100)/10, tempThick, x + digitWidth + tempThick + 2, y + (tempHeight/3), digitWidth, digitHeight);			// Display tens digit
+	numGFX(temp%10, tempThick, x + (digitWidth<<1) + ((tempThick + 2)<<1), y + (tempHeight/3), digitWidth, digitHeight);	// Display ones digit
+	numGFX(0, 1, x + (digitWidth<<1) + ((tempThick + 2)<<1), y, digitWidth>>2, 1 +(digitWidth>>2));								// Display zero as degree symbol
+	numGFX(0xF, 2, x + (digitWidth*2.5) + ((tempThick + 2)<<1), y, digitWidth>>1, (digitHeight/3 - 1));						// Display 0xF for Fahrenheit
+}
+
+void labels() {
+	uint16_t i, j;
+	// Voltage labels
+	j = 0x26;					// Top of voltage bar label
+	for(i = 1; i < 3; i++) {
+		numGFX(j%16, 1, 8 - (i<<2), 0, 2, 5); j = j>>4;
+	}
+	numGFX(16, 1, 8, 0, 2, 5);			// Create 'V' for label
+	clearPixel(8, 4); clearPixel(10, 4);		// Make 'V' more apparent
+	j = 0x16;					// Bottom of voltage bar label
+	for(i = 1; i < 3; i++) {
+		numGFX(j%16, 1, 8 - (i<<2), 45, 2, 5); j = j>>4;
+	}
+	numGFX(16, 1, 8, 45, 2, 5);		// Create 'V' for label
+	clearPixel(8, 49); clearPixel(10, 49);		// Make 'V' more apparent
+	// Current labels
+	j = 0x100A;					// Top of current plot label
+	for(i = 0; i < 4; i++) {
+		numGFX(j%16, 1, 56 - (i<<2), 0, 2, 5); j = j>>4;
+	}
+	clearPixel(56, 0); clearPixel(58, 0);		// Make 'A' more apparent
+	j = 0x0A;					// Bottom of current plot label
+	for(i = 0; i < 2; i++) {
+		numGFX(j%16, 1, 56 - (i<<2), 45, 2, 5); j = j>>4;
+	}
+	clearPixel(56, 45); clearPixel(58, 45);		// Make 'A' more apparent
 }
 
 int main(void) {
-	uint16_t i = 0, j, k;
-	uint8_t x, y;
-	char test[6];
+	uint16_t volt, current[80], fahren, CPU[80], Mem[80], Net[80], Disk, i;
 	initialize();
 	initNHD();
 	clearCharNHD();
 	clearGFXNHD();
-	while(0) {
-		_delay_ms(10);
-		clearCharNHD();
-		j = getADC(5);
-		if (j > 100)
-			j = (j - 100) * 40 / 33;
-		else
-			j = 0;
-		test[5] = 0x00;
-		test[4] = 0x30 + j%10; j /= 10;
-		test[3] = '.';
-		test[2] = 0x30 + j%10; j /= 10;
-		test[1] = 0x30 + j%10; j /= 10;
-		test[0] = 0x30 + j%10; j /= 10;
-		strNHD(test);
-
-	}
-	updateMonitor(16, 20);
-	updatePlotMem(0, 20, resWidth/2 - 1, 30);
-	updatePlotNet(resWidth/2 + 1, 20, resWidth/2 - 1, 30);
+	labels();
 	while(1) {
-		_delay_ms(25);
-		for(j = 128; j > 0; j--) {
-			memMon[j] = memMon[j-1];
-			netMon[j] = netMon[j-1];
+		_delay_ms(10);
+		for(i = 80; i > 0; i--) {
+			current[i] = current[i-1];
 		}
-		memMon[0] = getADC(6) * 50 / 512;
-		netMon[0] = getADC(7) * 50 / 512;
-		updatePlotMem(0, 20, resWidth/2 - 1, 30);
-		updatePlotNet(resWidth/2 + 1, 20, resWidth/2 - 1, 30);
+
+		// get voltage
+		volt = (getADC(7) + 1) * 50 / 512;
+		updateBar(&volt, 1, 12, 0, 25, 50);
+
+		// get current
+		i = getADC(6);
+		if(i < 100)
+			i = 100;
+		current[0] = (i - 100) * 4 / 33;
+		updatePlot(current, 60, 0, 59, 50);
+
+		// get temperature
+		i = (getADC(6)>>2);
+		getTemp(i, 120, 0, 39, 50);
 	}
-	while(1);
-	_delay_ms(1000);
-	strNHD("This is a test.\nMy name is Jeffery.\nHello World!\nHow's this John?\0");
-	strNHD("This seems to work for now.\0");
-	for (i = 4; i > 0; i--) {
-		for (j = 0; j < i; j++) {
-			for (k = 0; k < i; k++) {
-				x = 0 + (4 - i) + (k*2);
-				y = 6 + (4 - i) + (j*2);
-				gfxNHD(testGFX, 2, 2, x, y);
-			}
-		}
-	}
-	gfxNHD(testGFX, 2, 2, x + 8, y);
-	createLineUD(60, 50, 60);
-	updateMonitor(16, 20);
-	while (1) {
+
+	while (1) {		// Test loop in case code ends
 		_delay_ms(250);
 		PORTA ^= 0x01;
 	}

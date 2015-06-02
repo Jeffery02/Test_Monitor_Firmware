@@ -39,13 +39,17 @@ White and blue Newhaven Graphic LCD resolution 160 x 128
 #define GFXAdd		0x0200				// LCD RAM address starting point for GFX output
 
 // Global Variables
+extern uint8_t numChar[];
 extern uint8_t charRow;
 extern uint8_t charCol;
-extern uint16_t testMon[];
-extern uint16_t memMon[];
-extern uint16_t memMonTest[];
-extern uint16_t netMon[];
-extern uint8_t testGFX[];
+
+#ifdef TEST
+	extern uint16_t testMon[];
+	extern uint16_t memMon[];
+	extern uint16_t memMonTest[];
+	extern uint16_t netMon[];
+	extern uint8_t testGFX[];
+#endif
 
 void datNHD(uint8_t);
 void exComNHD(uint8_t, uint8_t, uint8_t);
@@ -58,12 +62,15 @@ void gfxNHD(uint8_t *, uint8_t, uint8_t, uint8_t, uint8_t);
 void setPixel(uint8_t, uint8_t);
 void clearPixel(uint8_t, uint8_t);
 void createLineLR(uint8_t, uint8_t, uint8_t);
+void deleteLineLR(uint8_t, uint8_t, uint8_t);
 void createLineUD(uint8_t, uint8_t, uint8_t);
-void createBars(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
+void deleteLineUD(uint8_t, uint8_t, uint8_t);
+void deleteBlock(uint8_t, uint8_t, uint8_t, uint8_t);
+void createBars(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 void createBox(uint8_t, uint8_t, uint8_t, uint8_t);
-void updateMonitor(uint8_t, uint8_t);
-void updatePlotMem(uint8_t, uint8_t, uint8_t, uint8_t);
-void updatePlotNet(uint8_t, uint8_t, uint8_t, uint8_t);
+void numGFX(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
+void updateBar(uint16_t*, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
+void updatePlot(uint16_t*, uint8_t, uint8_t, uint8_t, uint8_t);
 
 #ifndef DB
 	#error "Please define 'DB' for the data bus"

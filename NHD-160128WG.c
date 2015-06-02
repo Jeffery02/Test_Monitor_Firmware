@@ -2,6 +2,8 @@
 #include "NHD-160128WG.h"
 
 // Global Variables
+uint8_t flip[] = {0b0000, 0b1000, 0b0100, 0b1100, 0b0010, 0b1010, 0b0110, 0b1110, 0b0001, 0b1001, 0b0101, 0b1101, 0b0011, 0b1011, 0b0111, 0b1111};
+
 uint8_t charRow = 0;
 uint8_t charCol = 0;
 
@@ -30,6 +32,20 @@ uint8_t testGFX[] = {
 	0b0011111, 0b1111100,
 	0b0000000, 0b0000000
 };
+
+// Used for numGFX to create any hex digit using a simple font (V was included at the end (0x37) for labeling voltage)
+uint8_t numChar[] = {0x77, 0x12, 0x5D, 0x5B, 0x3A, 0x6B, 0x6F, 0x52, 0x7F, 0x7B, 0x7E, 0x2F, 0x65, 0x1F, 0x6D, 0x6C, 0x37};
+
+uint8_t flipByte(uint8_t in) {		// Flip the bits of a byte
+	return(flip[in&0x0F]<<4 | flip[in>>4]);
+}
+
+void test() {
+	while(1) {
+		_delay_ms(250);
+		PORTA ^= 0x01;
+	}
+}
 
 void datNHD(uint8_t data) {
 	nRD;				// Disable read mode
@@ -72,7 +88,7 @@ void clearCharNHD() {
 	int i;
 	exComNHD(0x24, charAdd & 0xFF, charAdd >> 8);		// Set address pointer
 	comNHD(0xB0);			// Data auto-write
-	for (i = 0; i < 480; i++) {		// Clear LCD buffer
+	for(i = 0; i < 480; i++) {		// Clear LCD buffer
 		datNHD(0x00);				// clear buffer
 	}
 	comNHD(0xB2);			// Disable auto-write
@@ -86,7 +102,7 @@ void clearGFXNHD() {
 	int i;
 	exComNHD(0x24, GFXAdd & 0xFF, GFXAdd >> 8);		// Set address pointer
 	comNHD(0xB0);			// Data auto-write
-	for (i = 0; i < resWidth*resHeight; i++) {		// Clear LCD buffer
+	for(i = 0; i < resWidth*resHeight; i++) {		// Clear LCD buffer
 		datNHD(0x00);				// clear buffer
 	}
 	comNHD(0xB2);			// Disable auto-write
@@ -110,7 +126,7 @@ void initNHD() {
 	_delay_us(500);
 }
 
-void strNHD(char * str) {
+void strNHD(char* str) {
 	uint16_t i = 0, j = charRow*23 + charCol;
 	exComNHD(0x24, j & 0xFF, j >> 8);		// Set address pointer
 	comNHD(0xB0);					// Data auto-write
@@ -132,11 +148,11 @@ void strNHD(char * str) {
 	exComNHD(0x21, charCol, charRow);		// Set cursor positition
 }
 
-void gfxNHD(uint8_t * pic, uint8_t picWidth, uint8_t picHeight, uint8_t x, uint8_t y) {		// Display binary picture
+void gfxNHD(uint8_t* pic, uint8_t x, uint8_t y, uint8_t picWidth, uint8_t picHeight) {		// Display binary picture
 	uint16_t temp = GFXAdd + y*charWidth*8 + x;		// Calculate desired starting address
 	uint16_t i = 0, j = 0;
 	exComNHD(0x24, temp & 0xFF, temp >> 8);		// Set address pointer
-	while(j < picHeight*8) {
+	while (j < picHeight*8) {
 		for(i = 0; i < picWidth; i++) {
 			temp = GFXAdd + y*charWidth*8 + j*charWidth + i+x;
 			exComNHD(0x24, temp & 0xFF, temp >> 8);		// Set address pointer
@@ -144,6 +160,15 @@ void gfxNHD(uint8_t * pic, uint8_t picWidth, uint8_t picHeight, uint8_t x, uint8
 			comNHD(0xC4);				// Command to manually write data to LCD
 		}
 		j++;
+	}
+}
+
+void gfxNHD2(uint8_t* pic, uint8_t x, uint8_t y, uint8_t picWidth, uint8_t picHeight) {		// Display binary picture (alternate method)
+	uint8_t i, j, k;
+	for(i = 0; i < picWidth; i++) {
+		for(j = 0; j < picHeight; j++) {
+
+		}
 	}
 }
 
@@ -155,7 +180,7 @@ void setPixel(uint8_t x, uint8_t y) {		// Turn pixel on at location (x, y)
 
 void clearPixel(uint8_t x, uint8_t y) {		// Turn pixel off at location (x, y)
 	uint16_t temp = GFXAdd + (x/FW) + y*charWidth;		// Calculate RAM address for specific pixel
-	exComNHD(0x24, temp & 0xFF, temp >> 8);		// Tell LCD where to set pixel
+	exComNHD(0x24, temp & 0xFF, temp >> 8);		// Tell LCD where to clear pixel
 	comNHD(0xF0 | (FW - x%FW - 1));
 }
 
@@ -166,8 +191,19 @@ void createLineLR(uint8_t x, uint8_t y, uint8_t length) {
 	exComNHD(0x24, addr & 0xFF, addr >> 8);	// Tell LCD where to start line
 	if(!length)		// Make sure a line is even going to be created
 		return;
-	for (i = x; i < x+length; i++)	// Set 'length' amount of pixels starting from (x,y) coordinate
+	for(i = x; i < x+length; i++)	// Set 'length' amount of pixels starting from (x,y) coordinate
 		setPixel(i, y);
+}
+
+	// Use clearPixel to remove a horizontal line where (x, y) is the left position of the line
+void deleteLineLR(uint8_t x, uint8_t y, uint8_t length) {
+	uint8_t i;
+	uint16_t addr = GFXAdd + (x/FW) + y*charWidth;		// Calculate RAM address for start of line
+	exComNHD(0x24, addr & 0xFF, addr >> 8);	// Tell LCD where to start line
+	if(!length)		// Make sure a line is even going to be created
+		return;
+	for(i = x; i < x+length; i++)	// Set 'length' amount of pixels starting from (x,y) coordinate
+		clearPixel(i, y);
 }
 
 	// Use setPixel to create a verticle line where (x, y) is the top position of the line
@@ -177,14 +213,34 @@ void createLineUD(uint8_t x, uint8_t y, uint8_t length) {
 	exComNHD(0x24, addr & 0xFF, addr >> 8);	// Tell LCD where to start line
 	if(!length)		// Make sure a line is even going to be created
 		return;
-	for (i = y; i < y+length; i++)	// Set 'length' amount of pixels starting from (x,y) coordinate
+	for(i = y; i < y+length; i++)	// Set 'length' amount of pixels starting from (x,y) coordinate
 		setPixel(x, i);
 }
 
+	// Use clearPixel to remove a verticle line where (x, y) is the top position of the line
+void deleteLineUD(uint8_t x, uint8_t y, uint8_t length) {
+	uint8_t i;
+	uint16_t addr = GFXAdd + (x/FW) + y*charWidth;		// Calculate RAM address for start of line
+	exComNHD(0x24, addr & 0xFF, addr >> 8);	// Tell LCD where to start line
+	if(!length)		// Make sure a line is even going to be created
+		return;
+	for(i = y; i < y+length; i++)	// Set 'length' amount of pixels starting from (x,y) coordinate
+		clearPixel(x, i);
+}
+
+void deleteBlock( uint8_t x, uint8_t y, uint8_t delWidth, uint8_t delHeight) {		// Clear a section of the screen of any graphics
+	uint8_t i, j;
+	for(i = 0; i < delWidth; i++) {
+		for(j = 0; j < delHeight; j++) {
+			clearPixel(x + i, y + j);
+		}
+	}
+}
+
 	// Create user controlled solid blocks on top of each other
-void createBars(uint8_t barCount, uint8_t barWidth, uint8_t barHeight, uint8_t x, uint8_t y) {
+void createBars(uint8_t barCount, uint8_t barMax, uint8_t x, uint8_t y, uint8_t barWidth, uint8_t barHeight) {
 	uint16_t i;
-	if (!barCount) {	// End recursion when at 0 bars
+	if(!barCount) {	// End recursion when at 0 bars
 		return;
 	}
 
@@ -192,69 +248,82 @@ void createBars(uint8_t barCount, uint8_t barWidth, uint8_t barHeight, uint8_t x
 		createLineLR(x+2, y+i+1, barWidth-4);		// Create each horizintal section of selected width
 	}
 
-	createBars(barCount - 1, barWidth, barHeight, x, y + barHeight);	// Recursively make the next bar
+	createBars(barCount - 1, barMax, x, y + barHeight, barWidth, barHeight);	// Recursively make the next bar
 }
 
-void createBox(uint8_t boxWidth, uint8_t boxHeight, uint8_t x, uint8_t y) {
-	uint16_t i;
-	createLineLR(x, y, boxWidth);
-	for(i = 0; i < boxHeight; i++) {
-		setPixel(x, y + i);
-		setPixel(x + boxWidth - 1, y + i);
-	}
-	createLineLR(x, y + boxHeight - 1, boxWidth);
+void createBox(uint8_t x, uint8_t y, uint8_t boxWidth, uint8_t boxHeight) {
+	createLineLR(x, y, boxWidth);						// Create top of the box
+	createLineUD(x, y, boxHeight);						// Create left of the box
+	createLineUD(x + boxWidth - 1, y, boxHeight);		// Create right of the box
+	createLineLR(x, y + boxHeight - 1, boxWidth);		// Create bottom of the box
 }
 
-void updateMonitor(uint8_t monCount, uint8_t monHeight) {
-	uint8_t spacer = 2;
-	uint16_t temp, i, j, barWidth = resWidth/monCount - spacer;
-
-	// Clear monitor section of LCD
-	exComNHD(0x24, 0x00, 0x02);		// Set address pointer
-	comNHD(0xB0);			// Data auto-write
-	for (i = 0; i < monHeight*charWidth; i++) {		// Clear monitor location
-		datNHD(0x00);				// clear monitor
+void numGFX(uint8_t numVal, uint8_t numThick, uint8_t x, uint8_t y, uint8_t numWidth, uint8_t numHeight) {		// Create a simple number of variable size
+	uint8_t i, numSeg = numChar[numVal];
+	deleteBlock(x, y, numWidth + numThick, numHeight + numThick);		// Clear section to be used by number
+	if(numSeg & 0x40) {					// Create top section if used
+		for(i = 0; i < numThick; i++)			// Control for thickness of section
+			createLineLR(x, y + i, numWidth + numThick);
 	}
-	comNHD(0xB2);			// Disable auto-write
+	if(numSeg & 0x20) {					// Create top-left section if used
+		for(i = 0; i < numThick; i++)			// Control for thickness of section
+			createLineUD(x + i, y, (numHeight>>1) + numThick);
+	}
+	if(numSeg & 0x10) {					// Create top-right section if used
+		for(i = 0; i < numThick; i++)			// Control for thickness of section
+			createLineUD(x + i + numWidth, y, (numHeight>>1) + numThick);
+	}
+	if(numSeg & 0x08) {					// Create middle section if used
+		for(i = 0; i < numThick; i++)			// Control for thickness of section
+			createLineLR(x, y + i + (numHeight>>1), numWidth + numThick);
+	}
+	if(numSeg & 0x04) {					// Create bottom-left section if used
+		for(i = 0; i < numThick; i++)			// Control for thickness of section
+			createLineUD(x + i, y + (numHeight>>1), (numHeight>>1) + numThick);
+	}
+	if(numSeg & 0x02) {					// Create bottom-right section if used
+		for(i = 0; i < numThick; i++)			// Control for thickness of section
+			createLineUD(x + i + numWidth, y + (numHeight>>1), (numHeight>>1) + numThick);
+	}
+	if(numSeg & 0x01) {					// Create bottom section if used
+		for(i = 0; i < numThick; i++)			// Control for thickness of section
+			createLineLR(x, y + i + numHeight - 1, numWidth + numThick);
+	}
+}
+
+void updateBar(uint16_t* in, uint8_t monCount, uint8_t x, uint8_t y, uint8_t monWidth, uint8_t monHeight) {
+	uint8_t spacer = 1;
+	if(monWidth > resWidth) {monWidth = resWidth;}
+	uint16_t temp, i, j, barWidth = (monWidth-2)/monCount - spacer;
+	monWidth = ((barWidth + spacer)*monCount) + 3;
 
 	// Create monitor section
-	createLineLR(0, monHeight, resWidth);	// Create initial divider line
-	for (i = 0; i < monCount; i++) {		// Run for each device being monitored
-		temp = (testMon[i]*(monHeight - 1)) / 100;		// Calculate number of rows to output
+	createBox(x, y, monWidth, monHeight);
+	for(i = 0; i < monCount; i++) {		// Run for each device being monitored
+		temp = (in[i]*(monHeight - 3)) / 100;		// Calculate number of rows to output
 		for(j = 0; j < temp; j += 2) {			// Output every other row
-			createLineLR(1+(barWidth+spacer)*i, monHeight-j-2, barWidth);	// Create the bar lines
+			createLineLR(2+x+(barWidth+spacer)*i, y+monHeight-j-3, barWidth);	// Create the bar lines
+		}
+		for(j = temp; j < (monHeight - 3); j+=2) {
+			deleteLineLR(2+x+(barWidth+spacer)*i, y+monHeight-j-3, barWidth);	// Delete the bar lines that may still be there
 		}
 	}
 }
 
-void updatePlotMem(uint8_t x, uint8_t y, uint8_t memWidth, uint8_t memHeight) {
+void updatePlot(uint16_t* in, uint8_t x, uint8_t y, uint8_t memWidth, uint8_t memHeight) {
 	uint16_t i, j, tip, temp;
 	createLineLR(x, y, memWidth);		// Create top of window
-	createLineUD(x, y, memHeight);		// Create left of window
-	createLineUD(x + memWidth - 1, y, memHeight);		// Create right of window
-	createLineLR(x, y + memHeight, memWidth);		// Create bottom of window
+	createLineUD(x, y, memHeight - 1);		// Create left of window
+	createLineUD(x + memWidth - 1, y, memHeight - 1);		// Create right of window
+	createLineLR(x, y + memHeight - 1, memWidth);		// Create bottom of window
 
 	for(i = 1; i < (memWidth - 1); i++) {			// Populate plot
-		temp = (memMon[i - 1]*(memHeight)) / 100;
-		tip = y + memHeight - temp;
-		createLineUD(x + memWidth - 1 - i, tip, temp);
-		for(j = y + 1; j < tip; j++)
+		temp = (in[i - 1]*(memHeight - 1)) / 100;	// Calculate height of point on plot (assuming in[] = percentage value)
+		if(temp >= memHeight)				// Make sure plot maximum cannot be exceeded
+			temp = memHeight - 1;			// Make plot point max value
+		tip = y + memHeight - temp - 1;		// Find tip location
+		createLineUD(x + memWidth - 1 - i, tip, temp);		// Create line for plot point
+		for(j = y + 1; j < tip; j++)			// Make sure pixels above the tip are clear
 			clearPixel(x + memWidth - 1 - i, j);
-	}
-}
-
-void updatePlotNet(uint8_t x, uint8_t y, uint8_t netWidth, uint8_t netHeight) {
-	uint32_t i, j, tip, temp;
-	createLineLR(x, y, netWidth);		// Create top of window
-	createLineUD(x, y, netHeight);		// Create left of window
-	createLineUD(x + netWidth - 1, y, netHeight);		// Create right of window
-	createLineLR(x, y + netHeight, netWidth);		// Create bottom of window
-
-	for(i = 1; i < (netWidth - 1); i++) {			// Populate plot
-		temp = (netMon[i - 1]*(netHeight)) / 100;
-		tip = y + netHeight - temp;
-		createLineUD(x + netWidth - 1 - i, tip, temp);
-		for(j = y + 1; j < tip; j++)
-			clearPixel(x + netWidth - 1 - i, j);
 	}
 }

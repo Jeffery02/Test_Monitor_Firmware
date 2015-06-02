@@ -1,8 +1,7 @@
+#define TEST
 
 // Required Libraries
 #include "NHD-160128WG.h"
-
-uint8_t flip[] = {0b0000, 0b1000, 0b0100, 0b1100, 0b0010, 0b1010, 0b0110, 0b1110, 0b0001, 0b1001, 0b0101, 0b1101, 0b0011, 0b1011, 0b0111, 0b1111};
 
 void initialize() {
 	DDRD = 0xFF;		// Initialize data direction of port D
@@ -22,10 +21,6 @@ uint16_t getADC(char chan) {		// Equation for current: (I * 8.25) + 100 = (ADC)
 
 	j = ADCL + (ADCH<<8);	// Extract ADC value
 	return j;		// Return ADC value
-}
-
-uint8_t flipByte(uint8_t in) {		// Flip the bits of a byte
-	return(flip[in&0x0F]<<4 | flip[in>>4]);
 }
 
 int main(void) {
@@ -52,24 +47,19 @@ int main(void) {
 		test[0] = 0x30 + j%10; j /= 10;
 		strNHD(test);
 	}
-	testMon[0] = (getADC(6) + 1) * 50 / 512;
-	testMon[1] = (getADC(7) + 1) * 50 / 512;
-	updateMonitor(16, 20);
-	updatePlotMem(0, 20, resWidth/2 - 1, 30);
-	updatePlotNet(resWidth/2 + 1, 20, resWidth/2 - 1, 30);
 	while(1) {
-		_delay_ms(25);
+		_delay_ms(10);
 		for(j = 128; j > 0; j--) {
 			memMon[j] = memMon[j-1];
 			netMon[j] = netMon[j-1];
 		}
 		memMon[0] = (getADC(6) + 1) * 50 / 512;
 		netMon[0] = (getADC(7) + 1) * 50 / 512;
-		updatePlotMem(0, 20, resWidth/2 - 1, 30);
-		updatePlotNet(resWidth/2 + 1, 20, resWidth/2 - 1, 30);
+		updatePlot(memMon, resWidth/2 - 1, 30, 0, 20);
+		updatePlot(netMon, resWidth/2 - 1, 30, resWidth/2 + 1, 20);
 		testMon[0] = (getADC(6) + 1) * 50 / 512;
 		testMon[1] = (getADC(7) + 1) * 50 / 512;
-		updateMonitor(16, 20);
+		updateBar(testMon, 16, resWidth, 20, 0, 0);
 	}
 	while(1);
 	_delay_ms(1000);
@@ -80,13 +70,13 @@ int main(void) {
 			for (k = 0; k < i; k++) {
 				x = 0 + (4 - i) + (k*2);
 				y = 6 + (4 - i) + (j*2);
-				gfxNHD(testGFX, 2, 2, x, y);
+				gfxNHD(testGFX, x, y, 2, 2);
 			}
 		}
 	}
-	gfxNHD(testGFX, 2, 2, x + 8, y);
+	gfxNHD(testGFX, x + 8, y, 2, 2);
 	createLineUD(60, 50, 60);
-	updateMonitor(16, 20);
+	updateBar(testMon, 16, resWidth, 20, 0, 0);
 	while (1) {
 		_delay_ms(250);
 		PORTA ^= 0x01;
