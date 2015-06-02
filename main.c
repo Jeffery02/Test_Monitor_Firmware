@@ -6,10 +6,14 @@
 void initialize() {
 	DDRD = 0xFF;		// Initialize data direction of port D
 	DDRC = 0xFF;		// Initialize data direction of port C
+	DDRB = 0xB0;		// Initialize data direction of port B for use with TTL serial
 	DDRA = 0x01;		// Initialize data direction of port A
 
 	// ADC setup
 	ADCSRA = (1<<ADEN) | (0<<ADPS2)| (1<<ADPS1)| (1<<ADPS0);	//enable ADC
+
+	// TTL Serial Setup
+	SPCR = (1<<SPE) | (1<<MSTR);
 }
 
 uint16_t getADC(char chan) {		// Equation for current: (I * 8.25) + 100 = (ADC)
@@ -21,6 +25,16 @@ uint16_t getADC(char chan) {		// Equation for current: (I * 8.25) + 100 = (ADC)
 
 	j = ADCL + (ADCH<<8);	// Extract ADC value
 	return j;		// Return ADC value
+}
+
+void transmitSPI(uint8_t data) {
+	SPDR = data;
+	while(!(SPSR & (1<<SPIF)));
+}
+
+uint8_t receiveSPI() {
+	while(!(SPSR & (1<<SPIF)));
+	return SPDR;
 }
 
 void getTemp(uint8_t temp, uint8_t x, uint8_t y, uint8_t tempWidth, uint8_t tempHeight) {
@@ -63,10 +77,30 @@ void labels() {
 		numGFX(j%16, 1, 56 - (i<<2), 45, 2, 5); j = j>>4;
 	}
 	clearPixel(56, 45); clearPixel(58, 45);		// Make 'A' more apparent
+
+	// CPU label
+	charRow = 8;
+	charCol = 1;
+	strNHD("CPU\0");
+
+	// Mem label
+	charRow = 8;
+	charCol = 7;
+	strNHD("Mem\0");
+
+	// Net label
+	charRow = 8;
+	charCol = 13;
+	strNHD("Net\0");
+
+	// Disk label
+	charRow = 8;
+	charCol = 18;
+	strNHD("Disk\0");
 }
 
 int main(void) {
-	uint16_t volt, current[80], fahren, CPU[80], Mem[80], Net[80], Disk, i;
+	uint16_t volt, current[80], fahren, CPU[80], Mem[80], Net[80], disk, i;
 	initialize();
 	initNHD();
 	clearCharNHD();
@@ -76,6 +110,9 @@ int main(void) {
 		_delay_ms(10);
 		for(i = 80; i > 0; i--) {
 			current[i] = current[i-1];
+			CPU[i] = CPU[i-1];
+			Mem[i] = Mem[i-1];
+			Net[i] = Net[i-1];
 		}
 
 		// get voltage
@@ -92,6 +129,23 @@ int main(void) {
 		// get temperature
 		i = (getADC(6)>>2);
 		getTemp(i, 120, 0, 39, 50);
+
+		// get CPU usage
+		CPU[0] = (getADC(7) + 1) * 50 / 512;
+		updatePlot(CPU, 5, 74, 35, 50);
+
+		// get Mem usage
+		Mem[0] = (((getADC(7) + 1) * 50 / 512)%50) * 2;
+		updatePlot(Mem, 47, 74, 35, 50);
+
+		// get Net usage
+		Net[0] = (((getADC(7) + 1) * 50 / 512)%25)*4;
+		updatePlot(Net, 89, 74, 35, 50);
+
+		// get Disk usage
+		disk = (getADC(6) + 1) * 50 / 512;
+		updateBar(&disk, 1, 129, 74, 25, 50);
+
 	}
 
 	while (1) {		// Test loop in case code ends
