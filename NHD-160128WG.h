@@ -14,17 +14,17 @@ White and blue Newhaven Graphic LCD resolution 160 x 128
 
 // LCD uC pinout definitions
 #define DB 		PORTC					// All of Port C is directly connected to the data lines of the LCD
-#define RESET 	PORTD &= ~(0x80)		// Reset LCD with reset pin connected to pin D7
-#define nRESET 	PORTD |= 0x80			// Disable Reset
+#define RESET 	PORTB &= ~(0x02)		// Reset LCD with reset pin connected to pin B1
+#define nRESET 	PORTB |= 0x02			// Disable Reset
 #define C_D 	0x40					// Defined pin 6 for use with Com and Dat
 #define Dat		PORTD &= ~(C_D)			// Set LCD to data mode
 #define Com		PORTD |= C_D			// Set LCD to command mode
 #define CE		PORTD &= ~(0x20)		// Use pin D5 to enable LCD chip
 #define nCE		PORTD |= 0x20			// Disable LCD chip
-#define WR		PORTD &= ~(0x10)		// Enable write mode to LCD using pin D4
-#define nWR		PORTD |= 0x10			// Disable write mode
-#define RD 		PORTD &= ~(0x08)		// Enable read mode from LCD using pin D3
-#define nRD		PORTD |= 0x08			// Disable read mode
+#define WR		PORTB &= ~(0x01)		// Enable write mode to LCD using pin B0
+#define nWR		PORTB |= 0x01			// Disable write mode
+#define RD 		PORTD &= ~(0x10)		// Enable read mode from LCD using pin D4
+#define nRD		PORTD |= 0x10			// Disable read mode
 
 #define resWidth 	160 				// Max width of LCD (pixel count)
 #define resHeight	128 				// Max height of LCD (pixel count)
@@ -50,6 +50,8 @@ extern uint8_t charCol;
 	extern uint16_t netMon[];
 	extern uint8_t testGFX[];
 #endif
+
+uint8_t flipByte(uint8_t);
 
 void datNHD(uint8_t);
 void exComNHD(uint8_t, uint8_t, uint8_t);

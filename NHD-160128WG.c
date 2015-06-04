@@ -2,41 +2,45 @@
 #include "NHD-160128WG.h"
 
 // Global Variables
+	// Look up table for flipByte function
 uint8_t flip[] = {0b0000, 0b1000, 0b0100, 0b1100, 0b0010, 0b1010, 0b0110, 0b1110, 0b0001, 0b1001, 0b0101, 0b1101, 0b0011, 0b1011, 0b0111, 0b1111};
 
+	// Used to keep track of current character location
 uint8_t charRow = 0;
 uint8_t charCol = 0;
 
-uint16_t testMon[96] = {50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50};
+#ifdef TEST
+	uint16_t testMon[96] = {50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 76, 34, 5, 50};
 
-uint16_t memMon[128];
-uint16_t memMonTest[96] = {100, 15, 80, 43, 60, 20, 95, 60, 100, 37, 20, 25, 46, 76, 5, 50, 15, 12, 80, 43, 60, 12, 95, 20, 46, 37, 46, 25, 76, 34, 5, 50, 60, 12, 37, 43, 15, 12, 95, 100, 37, 42, 15, 25, 92, 76, 5, 50, 50, 12, 80, 90, 100, 37, 95, 100, 37, 37, 20, 60, 92, 20, 5, 50, 50, 12, 80, 43, 37, 12, 46, 100, 46, 90, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 42, 34, 5, 37};
+	uint16_t memMon[128];
+	uint16_t memMonTest[96] = {100, 15, 80, 43, 60, 20, 95, 60, 100, 37, 20, 25, 46, 76, 5, 50, 15, 12, 80, 43, 60, 12, 95, 20, 46, 37, 46, 25, 76, 34, 5, 50, 60, 12, 37, 43, 15, 12, 95, 100, 37, 42, 15, 25, 92, 76, 5, 50, 50, 12, 80, 90, 100, 37, 95, 100, 37, 37, 20, 60, 92, 20, 5, 50, 50, 12, 80, 43, 37, 12, 46, 100, 46, 90, 20, 25, 76, 34, 5, 50, 50, 12, 80, 43, 60, 12, 95, 100, 46, 37, 20, 25, 42, 34, 5, 37};
 
-uint16_t netMon[128];
+	uint16_t netMon[128];
 
-uint8_t testGFX[] = {
-	0b0000011, 0b1100000,
-	0b0000010, 0b0100000,
-	0b0011111, 0b1111100,
-	0b0010000, 0b0000100,
-	0b0010000, 0b0000100,
-	0b0011111, 0b1111100,
-	0b0010000, 0b0000100,
-	0b0010000, 0b0000100,
-	0b0011111, 0b1111100,
-	0b0010000, 0b0000100,
-	0b0010000, 0b0000100,
-	0b0011111, 0b1111100,
-	0b0010000, 0b0000100,
-	0b0010000, 0b0000100,
-	0b0011111, 0b1111100,
-	0b0000000, 0b0000000
-};
+	uint8_t testGFX[] = {
+		0b0000011, 0b1100000,
+		0b0000010, 0b0100000,
+		0b0011111, 0b1111100,
+		0b0010000, 0b0000100,
+		0b0010000, 0b0000100,
+		0b0011111, 0b1111100,
+		0b0010000, 0b0000100,
+		0b0010000, 0b0000100,
+		0b0011111, 0b1111100,
+		0b0010000, 0b0000100,
+		0b0010000, 0b0000100,
+		0b0011111, 0b1111100,
+		0b0010000, 0b0000100,
+		0b0010000, 0b0000100,
+		0b0011111, 0b1111100,
+		0b0000000, 0b0000000
+	};
+#endif
 
 // Used for numGFX to create any hex digit using a simple font (V was included at the end (0x37) for labeling voltage)
 uint8_t numChar[] = {0x77, 0x12, 0x5D, 0x5B, 0x3A, 0x6B, 0x6F, 0x52, 0x7F, 0x7B, 0x7E, 0x2F, 0x65, 0x1F, 0x6D, 0x6C, 0x37};
 
-uint8_t flipByte(uint8_t in) {		// Flip the bits of a byte
+uint8_t flipByte(uint8_t in) {		// Flip the bits of a byte using a look up table
 	return(flip[in&0x0F]<<4 | flip[in>>4]);
 }
 
@@ -49,7 +53,7 @@ void test() {
 
 void datNHD(uint8_t data) {
 	nRD;				// Disable read mode
-	DB = data;			// Set data bus
+	DB = flipByte(data);			// Set data bus
 	Dat;				// Set D/C pin to data
 	WR;					// Enable LCD write mode
 	CE;					// Enable LCD
@@ -63,7 +67,7 @@ void exComNHD(uint8_t command, uint8_t data0, uint8_t data1) {		// Read datashee
 	datNHD(data0);		// Extended command lines
 	datNHD(data1);		// Must be sent even if not needed for specific command
 	nRD;				// Disable read mode
-	DB = command;		// Set data bus
+	DB = flipByte(command);		// Set data bus
 	Com;				// Set D/C pin to command
 	WR;					// Enable LCD write mode
 	CE;					// Enable LCD
@@ -75,7 +79,7 @@ void exComNHD(uint8_t command, uint8_t data0, uint8_t data1) {		// Read datashee
 
 void comNHD(uint8_t command) {			// Read datasheet for associated data per command
 	nRD;				// Disable read mode
-	DB = command;		// Set data bus
+	DB = flipByte(command);		// Set data bus
 	Com;				// Set D/C pin to command
 	WR;					// Enable LCD write mode
 	CE;					// Enable LCD
@@ -109,6 +113,7 @@ void clearGFXNHD() {
 }
 
 void initNHD() {
+	PORTD |= 0x80;
 	nRD;				// Disable read mode
 	RESET;				// Reset LCD
 	_delay_us(500);		// Wait for LCD reset to finish
@@ -147,7 +152,7 @@ void strNHD(char* str) {
 	comNHD(0xB2);			// Disable auto-write
 	exComNHD(0x21, charCol, charRow);		// Set cursor positition
 }
-
+ #ifdef TEST
 void gfxNHD(uint8_t* pic, uint8_t x, uint8_t y, uint8_t picWidth, uint8_t picHeight) {		// Display binary picture
 	uint16_t temp = GFXAdd + y*charWidth*8 + x;		// Calculate desired starting address
 	uint16_t i = 0, j = 0;
@@ -162,6 +167,7 @@ void gfxNHD(uint8_t* pic, uint8_t x, uint8_t y, uint8_t picWidth, uint8_t picHei
 		j++;
 	}
 }
+#endif
 
 void gfxNHD2(uint8_t* pic, uint8_t x, uint8_t y, uint8_t picWidth, uint8_t picHeight) {		// Display binary picture (alternate method)
 	uint8_t i, j, k;

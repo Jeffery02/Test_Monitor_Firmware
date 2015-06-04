@@ -6,7 +6,7 @@
 void initialize() {
 	DDRD = 0xFF;		// Initialize data direction of port D
 	DDRC = 0xFF;		// Initialize data direction of port C
-	DDRB = 0xB0;		// Initialize data direction of port B for use with TTL serial
+	DDRB = 0xBF;		// Initialize data direction of port B for use with TTL serial
 	DDRA = 0x01;		// Initialize data direction of port A
 
 	// ADC setup
@@ -16,7 +16,7 @@ void initialize() {
 	SPCR = (1<<SPE) | (1<<MSTR);
 }
 
-uint16_t getADC(char chan) {		// Equation for current: (I * 8.25) + 100 = (ADC)
+uint16_t getADC(char chan) {		// Equation for current:
 	ADMUX = chan;		// Select which ADC MUX channel to read
 	_delay_us(100);		// Stabalize ADC MUX output before retrieving value
 	uint16_t j = 0;
@@ -27,12 +27,12 @@ uint16_t getADC(char chan) {		// Equation for current: (I * 8.25) + 100 = (ADC)
 	return j;		// Return ADC value
 }
 
-void transmitSPI(uint8_t data) {
+void transmitSPI(uint8_t data) {			// Not tested
 	SPDR = data;
 	while(!(SPSR & (1<<SPIF)));
 }
 
-uint8_t receiveSPI() {
+uint8_t receiveSPI() {						// Not tested
 	while(!(SPSR & (1<<SPIF)));
 	return SPDR;
 }
@@ -101,49 +101,51 @@ void labels() {
 
 int main(void) {
 	uint16_t volt, current[80], fahren, CPU[80], Mem[80], Net[80], disk, i;
-	initialize();
-	initNHD();
-	clearCharNHD();
-	clearGFXNHD();
-	labels();
+	initialize();		// Initialize Atmega32 uC
+	initNHD();			// Initialize NHD LCD
+	clearCharNHD();		// Clear NHD LCD character buffer
+	clearGFXNHD();		// Clear NHD LCD graphics buffer
+	labels();			// Output labels for the later graphs and plots
 	while(1) {
 		_delay_ms(10);
-		for(i = 80; i > 0; i--) {
+		for(i = 80; i > 0; i--) {			// Shift arrays for updatePlot functions
 			current[i] = current[i-1];
 			CPU[i] = CPU[i-1];
 			Mem[i] = Mem[i-1];
 			Net[i] = Net[i-1];
 		}
 
-		// get voltage
-		volt = (getADC(7) + 1) * 50 / 512;
+		// updateBar and updatePlot assume input of range 0 -> 100
+
+		// get voltage (volt = 0 for 16V and volt = 100 for 26V)
+		volt = (getADC(0) + 1) * 50 / 512;
 		updateBar(&volt, 1, 12, 0, 25, 50);
 
-		// get current
-		i = getADC(6);
+		// get current (current = 0 for 0A and current = 100 for 100A)
+		i = getADC(1);
 		if(i < 100)
 			i = 100;
-		current[0] = (i - 100) * 4 / 33;
+		current[0] = (i - 100) * 4 / 33;	 // (I * 8.25) + 100 = (ADC)
 		updatePlot(current, 60, 0, 59, 50);
 
-		// get temperature
-		i = (getADC(6)>>2);
+		// get temperature (calibrated through trial and error)
+		i = (797 - (uint16_t)getADC(2))*3/11;	
 		getTemp(i, 120, 0, 39, 50);
 
-		// get CPU usage
-		CPU[0] = (getADC(7) + 1) * 50 / 512;
+		// get CPU usage (CPU = 0 for 0% and CPU = 100 for 100%)
+		CPU[0] = (getADC(7) + 1) * 50 / 512;		// Used for testing output. NOT useful for actual data.
 		updatePlot(CPU, 5, 74, 35, 50);
 
-		// get Mem usage
-		Mem[0] = (((getADC(7) + 1) * 50 / 512)%50) * 2;
+		// get Mem usage (Mem = 0 for 0% and Mem = 100 for 100%)
+		Mem[0] = (((getADC(7) + 1) * 50 / 512)%50) * 2;		// Used for testing output. NOT useful for actual data.
 		updatePlot(Mem, 47, 74, 35, 50);
 
-		// get Net usage
-		Net[0] = (((getADC(7) + 1) * 50 / 512)%25)*4;
+		// get Net usage (Net= 0 for 0% and Net= 100 for 100%)
+		Net[0] = (((getADC(7) + 1) * 50 / 512)%25)*4;		// Used for testing output. NOT useful for actual data.
 		updatePlot(Net, 89, 74, 35, 50);
 
-		// get Disk usage
-		disk = (getADC(6) + 1) * 50 / 512;
+		// get Disk usage (Disk= 0 for 0% and Disk= 100 for 100%)
+		disk = (getADC(6) + 1) * 50 / 512;		// Used for testing output. NOT useful for actual data.
 		updateBar(&disk, 1, 129, 74, 25, 50);
 
 	}
