@@ -118,7 +118,11 @@ int main(void) {
 		// updateBar and updatePlot assume input of range 0 -> 100
 
 		// get voltage (volt = 0 for 16V and volt = 100 for 26V)
-		volt = (getADC(0) + 1) * 50 / 512;
+		ADMUX = 0x18;
+		ADCSRA |= (1<<ADSC);	// Start ADC conversion
+		while(!(ADCSRA & (1<<ADIF)));	// Wait for ADC conversion to finish
+		volt = ADCL + (ADCH<<8);	// Extract ADC value
+		volt = (volt + 1) * 50 / 512;
 		updateBar(&volt, 1, 12, 0, 25, 50);
 
 		// get current (current = 0 for 0A and current = 100 for 100A)
@@ -129,7 +133,7 @@ int main(void) {
 		updatePlot(current, 60, 0, 59, 50);
 
 		// get temperature (calibrated through trial and error)
-		i = (797 - (uint16_t)getADC(2))*3/11;	
+		i = (797 - (uint16_t)getADC(7))*3/11;	
 		getTemp(i, 120, 0, 39, 50);
 
 		// get CPU usage (CPU = 0 for 0% and CPU = 100 for 100%)
@@ -145,7 +149,7 @@ int main(void) {
 		updatePlot(Net, 89, 74, 35, 50);
 
 		// get Disk usage (Disk= 0 for 0% and Disk= 100 for 100%)
-		disk = (getADC(6) + 1) * 50 / 512;		// Used for testing output. NOT useful for actual data.
+		disk = (getADC(7) + 1) * 50 / 512;		// Used for testing output. NOT useful for actual data.
 		updateBar(&disk, 1, 129, 74, 25, 50);
 
 	}
